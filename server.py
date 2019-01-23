@@ -1,7 +1,8 @@
 #  coding: utf-8 
 import socketserver
+from pathlib import Path  # for checking if files exist
 
-# Copyright 2013 Abram Hindle, Eddie Antonio Santos
+# Copyright 2013 Abram Hindle, Eddie Antonio Santos, Peter Weckend
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -31,8 +32,51 @@ class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        print(self.data)
+        #print ("Got a request of: %s\n" % self.data)
+        string = self.data.decode("utf-8")
+        receive = string.split('\r\n')[0]
+        
+        # file_name = './www/error.html'
+        # code = '404 Not Found\r\n'
+        # cont_type = 'Content-Type: text/html\r\n'
+        file_name = ''
+        code = ''
+        cont_type = ''
+
+        if 'GET' not in receive:
+            #405 Method Not Allowed
+            file_name = './www/error.html'
+            code = '405 Method Not Allowed\r\n'
+        elif ('deep/' in receive) or ('deep/index.html' in receive):
+            file_name = './www/deep/index.html'
+        elif (receive == 'GET / HTTP/1.1') or ('index.html' in receive):
+            #file_name = './www/index.html'
+            file_name = './www/index.html'
+            code = '200 OK\r\n'
+        elif ('base.css' in receive):
+            file_name = './www/base.css'
+            cont_type = 'Content-Type: text/css\r\n'
+            code = '200 OK\r\n'
+        elif 'deep.css' in receive:
+            file_name = './www/deep/deep.css'
+            cont_type = 'Content-Type: text/css\r\n'
+            code = '200 OK\r\n'
+
+        try:
+            with open(file_name, 'r') as html_file:
+                content = html_file.read()
+        except OSError as e:
+            file_name = './www/error.html'
+            code = '404 Not Found\r\n'
+            with open(file_name, 'r') as html_file:
+                content = html_file.read()
+
+        
+        #response = 'HTTP/1.1 %s %s \r\n %s \r\n' % (code, cont_type, content)
+        response = 'HTTP/1.1 '+ code + cont_type + '\r\n' + content + '\r\n'
+        print("YARRRRRR       ", response)
+        self.request.sendall(bytearray(response, 'utf-8'))
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
