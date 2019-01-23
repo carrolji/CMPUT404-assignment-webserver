@@ -1,6 +1,6 @@
 #  coding: utf-8 
 import socketserver
-from pathlib import Path  # for checking if files exist
+import os
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos, Peter Weckend
 # 
@@ -32,36 +32,56 @@ class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print(self.data)
+        print(self.data, "\n")
         #print ("Got a request of: %s\n" % self.data)
         string = self.data.decode("utf-8")
-        receive = string.split('\r\n')[0]
-        
-        # file_name = './www/error.html'
-        # code = '404 Not Found\r\n'
-        # cont_type = 'Content-Type: text/html\r\n'
-        file_name = ''
-        code = ''
+        #receive = string.split('\r\n')[0]
+        receive = string.split('HTTP')[0].split(' ')
+        method = receive[0]
+        direct = receive[1]
+
+        #print(string.split('HTTP')[0].split(' '))
+        print(direct)
+        # file_name = './www' 
+        # code = ''
         cont_type = ''
 
-        if 'GET' not in receive:
+        if method != 'GET':
             #405 Method Not Allowed
             file_name = './www/error.html'
             code = '405 Method Not Allowed\r\n'
-        elif ('deep/' in receive) or ('deep/index.html' in receive):
-            file_name = './www/deep/index.html'
-        elif (receive == 'GET / HTTP/1.1') or ('index.html' in receive):
-            #file_name = './www/index.html'
-            file_name = './www/index.html'
+        else:
+            file_name = './www' + direct
+
             code = '200 OK\r\n'
-        elif ('base.css' in receive):
-            file_name = './www/base.css'
-            cont_type = 'Content-Type: text/css\r\n'
-            code = '200 OK\r\n'
-        elif 'deep.css' in receive:
-            file_name = './www/deep/deep.css'
-            cont_type = 'Content-Type: text/css\r\n'
-            code = '200 OK\r\n'
+            cont_type = 'Content-Type: text/html\r\n'
+
+            if 'css' in direct:
+                cont_type = 'Content-Type: text/css\r\n'
+            
+            elif os.path.exists(file_name) and 'html' not in direct:
+                file_name += 'index.html'
+            # if direct == '/':
+            #     file_name = './www/index.html'
+
+            
+
+        print(file_name)
+        
+        # elif ('deep/' in receive) or ('deep/index.html' in receive):
+        #     file_name = './www/deep/index.html'
+        # elif (receive == 'GET / HTTP/1.1') or ('index.html' in receive):
+        #     #file_name = './www/index.html'
+        #     file_name = './www/index.html'
+        #     code = '200 OK\r\n'
+        # elif ('base.css' in receive):
+        #     file_name = './www/base.css'
+        #     cont_type = 'Content-Type: text/css\r\n'
+        #     code = '200 OK\r\n'
+        # elif 'deep.css' in receive:
+        #     file_name = './www/deep/deep.css'
+        #     cont_type = 'Content-Type: text/css\r\n'
+        #     code = '200 OK\r\n'
 
         try:
             with open(file_name, 'r') as html_file:
@@ -69,13 +89,15 @@ class MyWebServer(socketserver.BaseRequestHandler):
         except OSError as e:
             file_name = './www/error.html'
             code = '404 Not Found\r\n'
+            print("ERROR")
+            print(os.path.exists("./www/deep"))
             with open(file_name, 'r') as html_file:
                 content = html_file.read()
 
         
         #response = 'HTTP/1.1 %s %s \r\n %s \r\n' % (code, cont_type, content)
         response = 'HTTP/1.1 '+ code + cont_type + '\r\n' + content + '\r\n'
-        print("YARRRRRR       ", response)
+        #print("YARRRRRR       ", response)
         self.request.sendall(bytearray(response, 'utf-8'))
 
 if __name__ == "__main__":
