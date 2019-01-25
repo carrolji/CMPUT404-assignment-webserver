@@ -31,31 +31,34 @@ import os
 class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
-        self.data = self.request.recv(1024).strip()
-
-        # Convert byte to string
-        string = self.data.decode("utf-8")
+        self.data = self.request.recv(1024).strip().decode("utf-8")
         
         # Get method and path from request-url line
-        req_line = string.split('HTTP')[0].split(' ')
+        req_line = self.data.split('HTTP')[0].split(' ')
         method = req_line[0]
         path = req_line[1]
         
         file_name = ''
         cont_type = ''
+        location = ''
 
         if method == 'GET':
             file_name = './www' + path
-
             code = '200 OK\r\n'
             cont_type = 'Content-Type: text/html\r\n'
 
-            if 'css' in path:
+            if '.css' in path:
                 cont_type = 'Content-Type: text/css\r\n'
             
             elif os.path.exists(file_name) and 'html' not in path:
-                file_name += 'index.html'
-
+                
+                if file_name.endswith('/'):
+                    file_name += 'index.html'
+                else:
+                    # throw 301 code if path not end with /
+                    code = '301 Moved Permanently\r\n'
+                    location = 'Location: '+path+'/\r\n'
+                    file_name += '/index.html'
 
         try:
             with open(file_name, 'r') as html_file:
@@ -70,8 +73,7 @@ class MyWebServer(socketserver.BaseRequestHandler):
             
             content = '<head><title>%s</title></head><h1>%s</h1>' % (code ,code)
             
-
-        response = 'HTTP/1.1 '+ code + cont_type + '\r\n' + content + '\r\n'
+        response = 'HTTP/1.1 {}{}{}\r\n{}\r\n'.format(code,location,cont_type,content)
         self.request.sendall(bytearray(response, 'utf-8'))
 
 if __name__ == "__main__":
